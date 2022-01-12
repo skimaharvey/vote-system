@@ -17,7 +17,8 @@ export const Dapp = () => {
 	const [voterAddressToCheck, setVoterAddressToCheck] = useState('');
 	const [proposals, setProposals] = useState([]);
 	const [chairperson, setChairperson] = useState('');
-
+	const [numberOfVotes, setNumberOfVotes] = useState(0)
+	const [showError, setShowError] = useState(false)
 	// **************** Ethers Connection for the SmartContract ****************
 
 	async function _initialize() {
@@ -36,8 +37,10 @@ export const Dapp = () => {
 
 		// get the proposals
 		const newProposal = await _token.getAllProposals();
-
+		let nVotes = 0
+		newProposal.forEach(arr => nVotes += arr.voteCount.toNumber())
 		// get the chairman address
+		setNumberOfVotes(nVotes)
 		const newChairperson = await _token.chairperson();
 
 		// save the token data into a hook to reuse it along the app
@@ -58,11 +61,36 @@ export const Dapp = () => {
 		init();
 	}, []);
 
+	async function updateVoteNumber(block) {
+		const newProposal = await token.getAllProposals();
+		let nVotes = 0
+		newProposal.forEach(arr => nVotes += arr.voteCount.toNumber())
+		setProposals(newProposal);
+		setNumberOfVotes(nVotes)
+	}
+
+	useEffect(() => {
+		if(token) {
+			token.on("newVote",updateVoteNumber )
+		}
+		return () => {
+			if(token){
+				token.off("newVote", null)
+			}
+		}
+	}, [token])
+
 	// **************** Here Starts The Real Logic of the Frontend -> SmartContract ****************
 
 	// Vote the selected proposal (you can only vote one time)
 	const voteProposal = async (proposal) => {
-		await token.vote(proposal);
+		try {
+			await token.vote(proposal);
+		} catch (error) {
+			console.log("error: ",error["message"])
+			setShowError(true)
+			setTimeout(() => setShowError(false), 2000)
+		}
 	};
 
 	// Check if the address the user entered is a a voter or not
@@ -90,6 +118,14 @@ export const Dapp = () => {
 	return (
 		<div style={{ padding: '3rem 5rem' }}>
 			<h1>Voting System</h1>
+			<p>Number Of Votee: {numberOfVotes}</p>
+			{showError? 
+				<p
+					style={{height: 32, color: 'red'}}
+				>You probably already voted</p>
+			:
+				<p style={{height: 32}}></p>
+			}
 			<div>
 				<h4>chairperson: {chairperson}</h4>
 			</div>

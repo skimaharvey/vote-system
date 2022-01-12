@@ -12,19 +12,15 @@ contract Ballot {
         address delegate; // person delegated to
         uint256 vote; // index of the voted proposal
     }
-
     // This is a type for a single proposal.
     struct Proposal {
         bytes32 name; // short name (up to 32 bytes)
         uint256 voteCount; // number of accumulated votes
     }
-
     address public chairperson;
-
     // This declares a state variable that
     // stores a `Voter` struct for each possible address.
     mapping(address => Voter) public voters;
-
     // A dynamically-sized array of `Proposal` structs.
     Proposal[] public proposals;
 
@@ -32,7 +28,6 @@ contract Ballot {
     constructor(bytes32[] memory proposalNames) {
         chairperson = msg.sender;
         voters[chairperson].weight = 1;
-
         // For each of the provided proposal names,
         // create a new proposal object and add it
         // to the end of the array.
@@ -43,6 +38,8 @@ contract Ballot {
             proposals.push(Proposal({name: proposalNames[i], voteCount: 0}));
         }
     }
+
+    event newVote(address voter, uint256 voteValue);
 
     // Give `voter` the right to vote on this ballot.
     // May only be called by `chairperson`.
@@ -71,9 +68,7 @@ contract Ballot {
         // assigns reference
         Voter storage sender = voters[msg.sender];
         require(!sender.voted, "You already voted.");
-
         require(to != msg.sender, "Self-delegation is disallowed.");
-
         // Forward the delegation as long as
         // `to` also delegated.
         // In general, such loops are very dangerous,
@@ -84,11 +79,9 @@ contract Ballot {
         // cause a contract to get "stuck" completely.
         while (voters[to].delegate != address(0)) {
             to = voters[to].delegate;
-
             // We found a loop in the delegation, not allowed.
             require(to != msg.sender, "Found loop in delegation.");
         }
-
         // Since `sender` is a reference, this
         // modifies `voters[msg.sender].voted`
         sender.voted = true;
@@ -113,10 +106,10 @@ contract Ballot {
         require(!sender.voted, "Already voted.");
         sender.voted = true;
         sender.vote = proposal;
-
         // If `proposal` is out of the range of the array,
         // this will throw automatically and revert all
         // changes.
+        emit newVote(msg.sender, proposal);
         proposals[proposal].voteCount += sender.weight;
     }
 
